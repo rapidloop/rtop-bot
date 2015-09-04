@@ -26,55 +26,57 @@ THE SOFTWARE.
 package main
 
 import (
+	"flag"
 	"fmt"
-	"github.com/daneharrigan/hipchat"
 	"log"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/daneharrigan/hipchat"
+	"github.com/nlopes/slack"
 )
 
 const (
-	VERSION = "0.1"
+	VERSION = "0.2"
 )
 
 var sshUsername, idRsaPath string
+var hcFlag = flag.Bool("h", false, "create HipChat bot")
+var slackFlag = flag.Bool("s", false, "create Slack bot")
 
 //----------------------------------------------------------------------------
 
+func usage() {
+	fmt.Printf(
+		`rtop-bot %s - (c) 2015 RapidLoop - http://www.rtop-monitor.org/rtop-bot
+rtop-bot is a Slack and HipChat bot that can do remote system monitoring over SSH
+
+Usage:
+    rtop-bot -s slackBotToken
+    rtop-bot -h hipChatUserJid hipChatRoomJid
+
+where:
+    slackBotToken is the API token for the Slack bot
+    hipChatuserJid is the HipChat user jabber ID, like 139999_999914
+    hipChatRoomJid is the HipChat room jabber ID, like 139999_opschat
+`, VERSION)
+	os.Exit(1)
+}
+
 func main() {
 
-	if len(os.Args) != 3 {
-		fmt.Printf(
-			`rtop-bot %s - (c) 2015 RapidLoop - http://www.rtop-monitor.org/rtop-bot
-rtop-bot is a HipChat bot that can do remote system monitoring over SSH
+	flag.Parse()
 
-Usage: rtop-bot userJid roomJid
-
-where
-  userJid is the HipChat user jabber ID, like 139999_999914
-  roomJid is the HipChat room jabber ID, like 139999_opschat
-`, VERSION)
-		os.Exit(1)
+	if (!*hcFlag && !*slackFlag) || (*hcFlag && *slackFlag) ||
+		(*hcFlag && len(os.Args) != 4) || (*slackFlag && len(os.Args) != 3) {
+		usage()
 	}
 
 	log.SetPrefix("rtop-bot: ")
 	log.SetFlags(0)
-
-	username := os.Args[1]
-	roomjid := os.Args[2]
-	if strings.HasSuffix(username, "@chat.hipchat.com") {
-		username = strings.Replace(username, "@chat.hipchat.com", "", 1)
-	}
-	if !strings.HasSuffix(roomjid, "@conf.hipchat.com") {
-		roomjid += "@conf.hipchat.com"
-	}
-	pass, err := getpass("Password for user \"" + username + "\": ")
-	if err != nil {
-		log.Print(err)
-	}
 
 	// get default username for SSH connections
 	usr, err := user.Current()
@@ -94,6 +96,53 @@ where
 	sshConfig := filepath.Join(usr.HomeDir, ".ssh", "config")
 	if _, err := os.Stat(sshConfig); err == nil {
 		parseSshConfig(sshConfig)
+	}
+
+	if *hcFlag {
+		doHipChat(os.Args[2], os.Args[3])
+	} else {
+		doSlack(os.Args[2])
+	}
+}
+
+func doSlack(apiToken string) {
+	api := slack.New(apiToken)
+	rtm := api.NewRTM()
+	go rtm.ManageConnection()
+
+	mention := ""
+	for msg := range rtm.IncomingEvents {
+		switch ev := msg.Data.(type) {
+		case *slack.ConnectedEvent:
+			mention = "<@" + ev.Info.User.ID + ">"
+			if ev.ConnectionCount == 1 {
+				log.Printf("bot [%s] ready", ev.Info.User.Name)
+				log.Print("hit ^C to exit")
+			} else {
+				log.Printf("bot [%s] reconnected", ev.Info.User.Name)
+			}
+		case *slack.MessageEvent:
+			if strings.HasPrefix(ev.Msg.Text, mention) {
+				t := strings.TrimPrefix(ev.Msg.Text, mention)
+				go func(text, ch string) {
+					r := process(text)
+					rtm.SendMessage(rtm.NewOutgoingMessage(r, ch))
+				}(t, ev.Msg.Channel)
+			}
+		}
+	}
+}
+
+func doHipChat(username, roomjid string) {
+	if strings.HasSuffix(username, "@chat.hipchat.com") {
+		username = strings.Replace(username, "@chat.hipchat.com", "", 1)
+	}
+	if !strings.HasSuffix(roomjid, "@conf.hipchat.com") {
+		roomjid += "@conf.hipchat.com"
+	}
+	pass, err := getpass("Password for user \"" + username + "\": ")
+	if err != nil {
+		log.Print(err)
 	}
 
 	client, err := hipchat.NewClient(username, pass, "bot")
