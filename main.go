@@ -129,6 +129,9 @@ func doSlack(apiToken string) {
 					rtm.SendMessage(rtm.NewOutgoingMessage(r, ch))
 				}(t, ev.Msg.Channel)
 			}
+		case *slack.InvalidAuthEvent:
+			log.Print("bad Slack API token")
+			os.Exit(1)
 		}
 	}
 }
