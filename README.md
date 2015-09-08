@@ -19,7 +19,7 @@ listen for mentions:
     rtop-bot| [some.host] mem: 45.55 MiB of 489.57 MiB free, swap 0 bytes of 0 bytes free
     rtop-bot| [some.host] fs /: 16.18 GiB of 18.55 GiB free
 
-*rtop-bot*'s [home page](https://www.rtop-monitor.org/rtop-bot) has more
+*rtop-bot*'s [home page](http://www.rtop-monitor.org/rtop-bot) has more
 information and screenshots!
 
 ## build
