@@ -46,6 +46,7 @@ const (
 var sshUsername, idRsaPath string
 var hcFlag = flag.Bool("h", false, "create HipChat bot")
 var slackFlag = flag.Bool("s", false, "create Slack bot")
+var currentUser *user.User
 
 //----------------------------------------------------------------------------
 
@@ -79,21 +80,21 @@ func main() {
 	log.SetFlags(0)
 
 	// get default username for SSH connections
-	usr, err := user.Current()
-	if err != nil {
+	var err error
+	if currentUser, err = user.Current(); err != nil {
 		log.Print(err)
 		os.Exit(1)
 	}
-	sshUsername = usr.Username
+	sshUsername = currentUser.Username
 
 	// expand ~/.ssh/id_rsa and check if it exists
-	idRsaPath = filepath.Join(usr.HomeDir, ".ssh", "id_rsa")
+	idRsaPath = filepath.Join(currentUser.HomeDir, ".ssh", "id_rsa")
 	if _, err := os.Stat(idRsaPath); os.IsNotExist(err) {
 		idRsaPath = ""
 	}
 
 	// expand ~/.ssh/config and parse if it exists
-	sshConfig := filepath.Join(usr.HomeDir, ".ssh", "config")
+	sshConfig := filepath.Join(currentUser.HomeDir, ".ssh", "config")
 	if _, err := os.Stat(sshConfig); err == nil {
 		parseSshConfig(sshConfig)
 	}
