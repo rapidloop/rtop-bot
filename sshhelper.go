@@ -39,6 +39,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 )
@@ -139,6 +140,11 @@ func addKeyAuth(auths []ssh.AuthMethod, keypath string) []ssh.AuthMethod {
 		}
 		return append(auths, ssh.PublicKeys(signer))
 	}
+}
+
+func cleanHostname(hostname string) string {
+	match := regexp.MustCompile(`\<?(?:http\:\/\/)?([\w\.\-\_]+)\|?`)
+	return match.FindStringSubmatch(hostname)[1]
 }
 
 func getAgentAuth() (auth ssh.AuthMethod, ok bool) {

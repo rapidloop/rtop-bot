@@ -196,6 +196,7 @@ func process(request string) string {
 		return "say \"status <hostname>\" to see vital stats of <hostname>"
 	}
 
+	parts[2] = cleanHostname(parts[2])
 	address, user, keypath := getSshEntryOrDefault(parts[2])
 	client, err := sshConnect(user, address, keypath)
 	if err != nil {
