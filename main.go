@@ -33,18 +33,14 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-	"time"
-
-	"github.com/daneharrigan/hipchat"
 	"github.com/nlopes/slack"
 )
 
 const (
-	VERSION = "0.2"
+	VERSION = "0.2.1"
 )
 
 var sshUsername, idRsaPath string
-var hcFlag = flag.Bool("h", false, "create HipChat bot")
 var slackFlag = flag.Bool("s", false, "create Slack bot")
 var currentUser *user.User
 
@@ -71,10 +67,9 @@ func main() {
 
 	flag.Parse()
 
-	if (!*hcFlag && !*slackFlag) || (*hcFlag && *slackFlag) ||
-		(*hcFlag && len(os.Args) != 4) || (*slackFlag && len(os.Args) != 3) {
-		usage()
-	}
+    if (*slackFlag && len(os.Args) != 3) {
+        usage()
+    }
 
 	log.SetPrefix("rtop-bot: ")
 	log.SetFlags(0)
@@ -99,11 +94,8 @@ func main() {
 		parseSshConfig(sshConfig)
 	}
 
-	if *hcFlag {
-		doHipChat(os.Args[2], os.Args[3])
-	} else {
-		doSlack(os.Args[2])
-	}
+	doSlack(os.Args[2])
+	
 }
 
 func doSlack(apiToken string) {
@@ -137,57 +129,6 @@ func doSlack(apiToken string) {
 	}
 }
 
-func doHipChat(username, roomjid string) {
-	if strings.HasSuffix(username, "@chat.hipchat.com") {
-		username = strings.Replace(username, "@chat.hipchat.com", "", 1)
-	}
-	if !strings.HasSuffix(roomjid, "@conf.hipchat.com") {
-		roomjid += "@conf.hipchat.com"
-	}
-	pass, err := getpass("Password for user \"" + username + "\": ")
-	if err != nil {
-		log.Print(err)
-	}
-
-	client, err := hipchat.NewClient(username, pass, "bot")
-	if err != nil {
-		log.Print(err)
-		os.Exit(1)
-	}
-
-	nick, mname := getUserInfo(client, username)
-
-	client.Status("chat")
-	client.Join(roomjid, nick)
-	log.Printf("[%s] now serving room [%s]", nick, roomjid)
-	log.Print("hit ^C to exit")
-
-	go client.KeepAlive()
-	for message := range client.Messages() {
-		if strings.HasPrefix(message.Body, "@"+mname) {
-			go client.Say(roomjid, nick, process(message.Body))
-		}
-	}
-}
-
-func getUserInfo(client *hipchat.Client, id string) (string, string) {
-	id = id + "@chat.hipchat.com"
-	client.RequestUsers()
-	select {
-	case users := <-client.Users():
-		for _, user := range users {
-			if user.Id == id {
-				log.Printf("using username [%s] and mention name [%s]",
-					user.Name, user.MentionName)
-				return user.Name, user.MentionName
-			}
-		}
-	case <-time.After(10 * time.Second):
-		log.Print("timed out waiting for user list")
-		os.Exit(1)
-	}
-	return "rtop-bot", "rtop-bot"
-}
 
 func process(request string) string {
 

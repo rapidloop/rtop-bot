@@ -37,5 +37,6 @@ completes. There are no runtime dependencies or configuration needed.
 Pull requests welcome. Keep it simple.
 
 ## changelog
+* 12-Aug-2019: 0.2.1 hipchat support removed and fix ssh connection! [HostKeyCallback non-permissive by default](https://github.com/golang/go/issues/19767)
 * 4-Sep-2015: 0.2 - Slack support added
 * 11-Aug-2015: 0.1 - first public release
