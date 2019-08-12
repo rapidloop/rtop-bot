@@ -157,6 +157,7 @@ func tryAgentConnect(user, addr string) (client *ssh.Client) {
 		config := &ssh.ClientConfig{
 			User: user,
 			Auth: []ssh.AuthMethod{auth},
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		}
 		client, _ = ssh.Dial("tcp", addr, config)
 	}
@@ -177,6 +178,7 @@ func sshConnect(user, addr, keypath string) (client *ssh.Client, err error) {
 	config := &ssh.ClientConfig{
 		User: user,
 		Auth: auths,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	client, err = ssh.Dial("tcp", addr, config)
 	if err != nil {
